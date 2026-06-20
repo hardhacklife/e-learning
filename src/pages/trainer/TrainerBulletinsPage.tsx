@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -11,19 +11,45 @@ import {
   useSaveGradeMutation,
 } from '@/features/grades/api/gradesApi'
 import { FieldLabel, TextInput } from '@/features/formations/components/formFields'
-import { useGetStudentsQuery } from '@/features/students/api/studentsApi'
+import { useGetMyModulesQuery, useGetStudentsQuery } from '@/features/students/api/studentsApi'
 import { getApiErrorMessage } from '@/features/admin/utils/apiError'
 
 export function TrainerBulletinsPage() {
-  const { data: students = [] } = useGetStudentsQuery()
-  const { data: cours = [] } = useGetCoursQuery()
+  const { data: myModules = [] } = useGetMyModulesQuery()
+  const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null)
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
   const [semestre, setSemestre] = useState('S1')
   const [anneeAcademique, setAnneeAcademique] = useState('2024-2025')
 
-  const { data: grades = [], isLoading } = useGetStudentGradesQuery(selectedStudentId ?? 0, {
-    skip: !selectedStudentId,
-  })
+  const assignedModules = useMemo(
+    () => myModules.filter((module) => module.assignee !== false),
+    [myModules],
+  )
+
+  useEffect(() => {
+    if (assignedModules.length > 0 && selectedModuleId == null) {
+      setSelectedModuleId(assignedModules[0]?.id ?? null)
+    }
+  }, [assignedModules, selectedModuleId])
+
+  useEffect(() => {
+    setSelectedStudentId(null)
+  }, [selectedModuleId])
+
+  const { data: students = [], isLoading: loadingStudents } = useGetStudentsQuery(
+    selectedModuleId != null ? { moduleId: selectedModuleId } : undefined,
+    { skip: selectedModuleId == null },
+  )
+
+  const { data: cours = [] } = useGetCoursQuery(
+    selectedModuleId != null ? { formationId: selectedModuleId } : undefined,
+    { skip: selectedModuleId == null },
+  )
+
+  const { data: grades = [], isLoading: loadingGrades } = useGetStudentGradesQuery(
+    selectedStudentId ?? 0,
+    { skip: !selectedStudentId },
+  )
 
   const [saveGrade, { isLoading: saving }] = useSaveGradeMutation()
   const [publishBulletin, { isLoading: publishing }] = usePublishBulletinMutation()
@@ -35,16 +61,23 @@ export function TrainerBulletinsPage() {
     valeur: '',
   })
 
+  const allowedCoursIds = useMemo(() => new Set(cours.map((item) => item.id)), [cours])
+
   const periodGrades = useMemo(
     () =>
       grades.filter(
-        (grade) => grade.semestre === semestre && grade.anneeAcademique === anneeAcademique,
+        (grade) =>
+          grade.semestre === semestre &&
+          grade.anneeAcademique === anneeAcademique &&
+          allowedCoursIds.has(grade.coursId),
       ),
-    [grades, semestre, anneeAcademique],
+    [grades, semestre, anneeAcademique, allowedCoursIds],
   )
 
   const hasUnpublished = periodGrades.some((grade) => !grade.bulletinPublie)
   const isPublished = periodGrades.length > 0 && periodGrades.every((grade) => grade.bulletinPublie)
+
+  const selectedModule = assignedModules.find((module) => module.id === selectedModuleId)
 
   const handleAddGrade = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +104,7 @@ export function TrainerBulletinsPage() {
       setError(
         getApiErrorMessage(
           err as Parameters<typeof getApiErrorMessage>[0],
-          'Impossible d\'enregistrer la note.',
+          "Impossible d'enregistrer la note.",
         ),
       )
     }
@@ -100,43 +133,78 @@ export function TrainerBulletinsPage() {
     <div>
       <PageHeader
         title="Bulletins"
-        description="Saisie des notes et publication des bulletins étudiants"
+        description="Saisie des notes sur vos modules assignés et publication des bulletins"
       />
 
-      <div className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3">
-        <div>
-          <FieldLabel>Étudiant</FieldLabel>
-          <select
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            value={selectedStudentId ?? ''}
-            onChange={(e) => setSelectedStudentId(Number(e.target.value) || null)}
-          >
-            <option value="">Choisir un étudiant</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.prenom} {student.nom}
-              </option>
-            ))}
-          </select>
+      {assignedModules.length === 0 ? (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Aucun module assigné. Vous ne pouvez saisir des notes que sur les modules qui vous sont
+          assignés.
+        </p>
+      ) : (
+        <div className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <FieldLabel>Module assigné</FieldLabel>
+            <select
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={selectedModuleId ?? ''}
+              onChange={(e) => setSelectedModuleId(Number(e.target.value))}
+            >
+              {assignedModules.map((module) => (
+                <option key={module.id} value={module.id}>
+                  {module.titre}
+                  {module.filiereNom ? ` (${module.filiereNom})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <FieldLabel>Étudiant</FieldLabel>
+            <select
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={selectedStudentId ?? ''}
+              onChange={(e) => setSelectedStudentId(Number(e.target.value) || null)}
+              disabled={loadingStudents || students.length === 0}
+            >
+              <option value="">Choisir un étudiant</option>
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.prenom} {student.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <FieldLabel>Semestre</FieldLabel>
+            <TextInput value={semestre} onChange={(e) => setSemestre(e.target.value)} />
+          </div>
+          <div>
+            <FieldLabel>Année académique</FieldLabel>
+            <TextInput
+              value={anneeAcademique}
+              onChange={(e) => setAnneeAcademique(e.target.value)}
+            />
+          </div>
         </div>
-        <div>
-          <FieldLabel>Semestre</FieldLabel>
-          <TextInput value={semestre} onChange={(e) => setSemestre(e.target.value)} />
-        </div>
-        <div>
-          <FieldLabel>Année académique</FieldLabel>
-          <TextInput
-            value={anneeAcademique}
-            onChange={(e) => setAnneeAcademique(e.target.value)}
-          />
-        </div>
-      </div>
+      )}
 
-      {!selectedStudentId ? (
-        <p className="text-sm text-slate-500">Sélectionnez un étudiant pour gérer son bulletin.</p>
+      {selectedModule?.filiereNom && (
+        <p className="mb-4 text-sm text-slate-500">
+          Filière :{' '}
+          <span className="font-medium text-slate-700">{selectedModule.filiereNom}</span>
+        </p>
+      )}
+
+      {!selectedModuleId ? (
+        <p className="text-sm text-slate-500">Sélectionnez un module pour gérer les bulletins.</p>
+      ) : !selectedStudentId ? (
+        <p className="text-sm text-slate-500">
+          Sélectionnez un étudiant du module pour gérer son bulletin.
+        </p>
       ) : cours.length === 0 ? (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Aucun cours enregistré. Créez des cours (matières) côté backend avant de saisir des notes.
+          Aucun cours enregistré pour ce module. Créez des cours (matières) avant de saisir des
+          notes.
         </p>
       ) : (
         <>
@@ -148,7 +216,7 @@ export function TrainerBulletinsPage() {
             <h2 className="mb-3 text-sm font-semibold text-slate-800">Ajouter une note</h2>
             <form onSubmit={handleAddGrade} className="grid gap-3 sm:grid-cols-4">
               <div>
-                <FieldLabel>Cours</FieldLabel>
+                <FieldLabel>Cours du module</FieldLabel>
                 <select
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={form.coursId || cours[0]?.id || ''}
@@ -217,13 +285,13 @@ export function TrainerBulletinsPage() {
             </Button>
           </div>
 
-          {isLoading ? (
+          {loadingGrades ? (
             <div className="flex justify-center py-12">
               <Spinner size="lg" />
             </div>
           ) : periodGrades.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
-              <p className="text-sm text-slate-600">Aucune note pour cette période.</p>
+              <p className="text-sm text-slate-600">Aucune note pour cette période sur ce module.</p>
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

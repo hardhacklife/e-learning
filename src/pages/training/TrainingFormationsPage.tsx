@@ -15,6 +15,7 @@ import { FormationCatalogModal } from '@/features/catalog/components/FormationCa
 import { ConfirmDialog } from '@/features/formations/components/ConfirmDialog'
 import { CrudActions } from '@/features/formations/components/CrudActions'
 import { formatNiveauEtude } from '@/types/niveauEtude'
+import { resolveFormationImageUrl } from '@/features/formations/utils/catalogFormationBridge'
 
 export function TrainingFormationsPage() {
   const { data: formations = [], isLoading } = useGetFormationsCatalogQuery()
@@ -31,7 +32,7 @@ export function TrainingFormationsPage() {
     <div>
       <PageHeader
         title="Formations"
-        description="Programmes pédagogiques — titre, slug, description et image"
+        description="Programmes pédagogiques — modules et enseignants assignés"
         actions={
           <Button
             size="sm"
@@ -65,6 +66,7 @@ export function TrainingFormationsPage() {
                 <th className="px-4 py-3 font-medium">Titre</th>
                 <th className="px-4 py-3 font-medium">Slug</th>
                 <th className="px-4 py-3 font-medium">Filière</th>
+                <th className="px-4 py-3 font-medium">Formateurs</th>
                 <th className="px-4 py-3 font-medium">Niveau</th>
                 <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium" />
@@ -74,15 +76,11 @@ export function TrainingFormationsPage() {
               {formations.map((formation) => (
                 <tr key={formation.id} className="hover:bg-slate-50/50">
                   <td className="px-4 py-3">
-                    {formation.imageUrl ? (
-                      <img
-                        src={formation.imageUrl}
-                        alt=""
-                        className="h-10 w-16 rounded object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs text-slate-400">—</span>
-                    )}
+                    <img
+                      src={resolveFormationImageUrl(formation.imageUrl)}
+                      alt=""
+                      className="h-10 w-16 rounded object-cover"
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <Link
@@ -101,6 +99,22 @@ export function TrainingFormationsPage() {
                     {formation.slug}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{formation.filiereNom ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    {formation.formateurNoms && formation.formateurNoms.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {formation.formateurNoms.map((name) => (
+                          <span
+                            key={name}
+                            className="rounded-full bg-primary-50 px-2 py-0.5 text-xs text-primary-700"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">Aucun</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{formatNiveauEtude(formation.niveau)}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {formation.typeFormation ?? '—'}

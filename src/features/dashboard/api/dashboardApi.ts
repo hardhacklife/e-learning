@@ -1,49 +1,36 @@
 import { baseApi } from '@/app/api/baseApi'
 import type {
-  MOCK_ADMIN_STATS,
-  MOCK_STAFF_STATS,
-  MOCK_TRAINER_STATS,
-  MOCK_TRAINING_STATS,
-  MOCK_TUTOR_STATS,
-} from '@/mocks/data/stats'
-
-type AdminStats = typeof MOCK_ADMIN_STATS
-type TrainerStats = typeof MOCK_TRAINER_STATS
-type StaffStats = typeof MOCK_STAFF_STATS
-type TrainingStats = typeof MOCK_TRAINING_STATS
-type CareerStats = {
-  internships: number
-  partners: number
-  employed: number
-  selfEmployed: number
-  pendingConventions?: number
-  activeInternships?: number
-}
-type TutorStats = typeof MOCK_TUTOR_STATS
+  AdminDashboardStats,
+  CareerDashboardStats,
+  StaffDashboardStats,
+  TrainerDashboardStats,
+  TrainingDashboardStats,
+  TutorDashboardStats,
+} from '@/types/dashboard'
 
 export const dashboardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getAdminStats: builder.query<AdminStats, void>({
+    getAdminStats: builder.query<AdminDashboardStats, void>({
       query: () => '/dashboard/admin',
       providesTags: ['Dashboard'],
     }),
-    getTrainerStats: builder.query<TrainerStats, void>({
+    getTrainerStats: builder.query<TrainerDashboardStats, void>({
       query: () => '/dashboard/trainer',
       providesTags: ['Dashboard'],
     }),
-    getStaffStats: builder.query<StaffStats, void>({
+    getStaffStats: builder.query<StaffDashboardStats, void>({
       query: () => '/dashboard/staff',
       providesTags: ['Dashboard'],
     }),
-    getTrainingStats: builder.query<TrainingStats, void>({
+    getTrainingStats: builder.query<TrainingDashboardStats, void>({
       query: () => '/dashboard/training',
       providesTags: ['Dashboard'],
     }),
-    getCareerStats: builder.query<CareerStats, void>({
+    getCareerStats: builder.query<CareerDashboardStats, void>({
       query: () => '/dashboard/career',
       providesTags: ['Dashboard'],
     }),
-    getTutorStats: builder.query<TutorStats, void>({
+    getTutorStats: builder.query<TutorDashboardStats, void>({
       query: () => '/dashboard/tutor',
       providesTags: ['Dashboard'],
     }),

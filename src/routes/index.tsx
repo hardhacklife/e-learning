@@ -29,7 +29,9 @@ import { TrainerQuizzesPage } from '@/pages/trainer/TrainerQuizzesPage'
 import { TrainerSchedulePage } from '@/pages/trainer/TrainerSchedulePage'
 import { TrainerStudentsPage } from '@/pages/trainer/TrainerStudentsPage'
 import { StudentBulletinsPage } from '@/pages/student/StudentBulletinsPage'
+import { StudentNotificationsPage } from '@/pages/student/StudentNotificationsPage'
 import { TrainerBulletinsPage } from '@/pages/trainer/TrainerBulletinsPage'
+import { TrainerNotificationsPage } from '@/pages/trainer/TrainerNotificationsPage'
 import { TutorDashboardPage } from '@/pages/tutor/TutorDashboardPage'
 import { TrainingDashboardPage } from '@/pages/training/TrainingDashboardPage'
 import { TrainingSchedulePage } from '@/pages/training/TrainingSchedulePage'
@@ -40,6 +42,7 @@ import { TrainingFiliereDetailPage } from '@/pages/training/TrainingFiliereDetai
 import { TrainingPromotionsPage } from '@/pages/training/TrainingPromotionsPage'
 import { TrainingStudentGroupsPage } from '@/pages/training/TrainingStudentGroupsPage'
 import { TrainingTrainersPage } from '@/pages/training/TrainingTrainersPage'
+import { TrainingNotificationsPage } from '@/pages/training/TrainingNotificationsPage'
 import { CareerDashboardPage } from '@/pages/career/CareerDashboardPage'
 import { CareerInternshipsPage } from '@/pages/career/CareerInternshipsPage'
 import { CareerPartnersPage } from '@/pages/career/CareerPartnersPage'
@@ -115,6 +118,7 @@ export function AppRoutes() {
             <Route path="formations" element={<TrainerFormationsPage />} />
             <Route path="students" element={<TrainerStudentsPage />} />
             <Route path="bulletins" element={<TrainerBulletinsPage />} />
+            <Route path="notifications" element={<TrainerNotificationsPage />} />
             <Route
               path="formations/:id"
               element={<TrainerFormationDetailPage />}
@@ -167,6 +171,7 @@ export function AppRoutes() {
             <Route path="promotions" element={<TrainingPromotionsPage />} />
             <Route path="student-groups" element={<TrainingStudentGroupsPage />} />
             <Route path="schedule" element={<TrainingSchedulePage />} />
+            <Route path="notifications" element={<TrainingNotificationsPage />} />
             <Route path="trainers" element={<TrainingTrainersPage />} />
           </Route>
         </Route>
@@ -205,15 +210,7 @@ export function AppRoutes() {
                 />
               }
             />
-            <Route
-              path="notifications"
-              element={
-                <PlaceholderPage
-                  title="Notifications"
-                  description="Annonces et mises à jour institutionnelles"
-                />
-              }
-            />
+            <Route path="notifications" element={<StudentNotificationsPage />} />
           </Route>
         </Route>
       </Route>

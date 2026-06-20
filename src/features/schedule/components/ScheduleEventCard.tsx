@@ -17,7 +17,14 @@ const typeStyles: Record<
 
 interface ScheduleEventCardProps {
   event: ScheduleEvent
-  style: { top: number; height: number }
+  style: {
+    top: number
+    height: number
+    leftPercent?: number
+    widthPercent?: number
+    columnIndex?: number
+  }
+  hasOverlap?: boolean
   compact?: boolean
   interactive?: boolean
   draggable?: boolean
@@ -30,6 +37,7 @@ interface ScheduleEventCardProps {
 export function ScheduleEventCard({
   event,
   style,
+  hasOverlap = false,
   compact = false,
   interactive = false,
   draggable = false,
@@ -40,15 +48,20 @@ export function ScheduleEventCard({
 }: ScheduleEventCardProps) {
   const { accent, label } = typeStyles[event.type]
   const isCompact = compact || style.height < 56
-  const showMeta = !compact && style.height >= 72
-  const showTag = !compact && style.height >= 96
+  const showMeta = !compact && style.height >= 72 && (style.widthPercent ?? 100) >= 34
+  const showTag = !compact && style.height >= 96 && (style.widthPercent ?? 100) >= 50
+
+  const leftPercent = style.leftPercent ?? 0
+  const widthPercent = style.widthPercent ?? 100
+  const horizontalInset = widthPercent >= 100 ? 2 : 1
 
   return (
     <div
       className={cn(
-        'absolute inset-x-0.5 overflow-hidden rounded-md border border-l-[3px] shadow-sm transition-shadow',
+        'absolute overflow-hidden rounded-md border border-l-[3px] shadow-sm transition-shadow',
         accent,
         event.colorClass ?? 'border-slate-200 bg-white text-slate-900',
+        hasOverlap && 'ring-1 ring-amber-300/90',
         interactive && 'pointer-events-auto',
         draggable
           ? 'cursor-grab active:cursor-grabbing hover:shadow-md hover:ring-2 hover:ring-primary-300/60'
@@ -57,7 +70,13 @@ export function ScheduleEventCard({
             : 'pointer-events-none',
         isDragging && 'opacity-40',
       )}
-      style={{ top: style.top, height: style.height, zIndex: isDragging ? 20 : 1 }}
+      style={{
+        top: style.top,
+        height: style.height,
+        left: `calc(${leftPercent}% + ${horizontalInset}px)`,
+        width: `calc(${widthPercent}% - ${horizontalInset * 2}px)`,
+        zIndex: isDragging ? 30 : 10 + (style.columnIndex ?? 0),
+      }}
       aria-label={`${event.title}, ${event.startTime} à ${event.endTime}`}
       draggable={draggable}
       onDragStart={
@@ -103,6 +122,14 @@ export function ScheduleEventCard({
               title="Récurrent chaque semaine"
             >
               ↻
+            </span>
+          )}
+          {hasOverlap && !isCompact && (
+            <span
+              className="shrink-0 rounded bg-amber-100 px-1 py-px text-[8px] font-bold text-amber-800"
+              title="Créneau superposé"
+            >
+              ‖
             </span>
           )}
         </div>

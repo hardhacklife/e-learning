@@ -60,14 +60,14 @@ export const PERSONNEL_CATEGORIES: PersonnelCategoryConfig[] = [
     roles: [UserRole.STUDENT],
     defaultRole: UserRole.STUDENT,
   },
-  {
-    id: 'insertion',
-    label: 'Insertion',
-    description: 'Service insertion et partenaires',
-    apiLabel: CATEGORY_API_PATH.insertion,
-    roles: [UserRole.CAREER_SERVICE],
-    defaultRole: UserRole.CAREER_SERVICE,
-  },
+  // {
+  //   id: 'insertion',
+  //   label: 'Insertion',
+  //   description: 'Service insertion et partenaires',
+  //   apiLabel: CATEGORY_API_PATH.insertion,
+  //   roles: [UserRole.CAREER_SERVICE],
+  //   defaultRole: UserRole.CAREER_SERVICE,
+  // },
 ]
 
 export function getCategoryConfig(id: PersonnelCategory) {

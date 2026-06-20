@@ -35,7 +35,7 @@ export function StudentBulletinsPage() {
   }
 
   return (
-    <div>
+    <div className="min-w-0 w-full">
       <PageHeader
         title="Mes bulletins"
         description="Consultez vos bulletins de notes publiés par l'établissement"
@@ -46,8 +46,8 @@ export function StudentBulletinsPage() {
           <p className="text-sm text-slate-600">Aucun bulletin publié pour le moment.</p>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          <div className="space-y-2">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-2 lg:sticky lg:top-0 lg:max-h-full lg:self-start lg:overflow-y-auto">
             {bulletins.map((bulletin) => {
               const active =
                 selected?.semestre === bulletin.semestre &&
@@ -80,7 +80,7 @@ export function StudentBulletinsPage() {
             })}
           </div>
 
-          <div>
+          <div className="min-w-0">
             {!selected ? (
               <Card>
                 <CardContent className="py-10 text-center text-sm text-slate-500">
@@ -127,8 +127,8 @@ export function StudentBulletinsPage() {
                       <h3 className="mb-3 text-sm font-semibold text-slate-800">
                         Moyennes par cours
                       </h3>
-                      <div className="overflow-hidden rounded-lg border border-slate-200">
-                        <table className="w-full text-sm">
+                      <div className="overflow-x-auto rounded-lg border border-slate-200">
+                        <table className="w-full min-w-[420px] text-sm">
                           <thead>
                             <tr className="bg-slate-50 text-left text-slate-500">
                               <th className="px-3 py-2 font-medium">Cours</th>
@@ -163,8 +163,8 @@ export function StudentBulletinsPage() {
                     <h3 className="mb-3 text-sm font-semibold text-slate-800">
                       Détail des évaluations
                     </h3>
-                    <div className="overflow-hidden rounded-lg border border-slate-200">
-                      <table className="w-full text-sm">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                      <table className="w-full min-w-[420px] text-sm">
                         <thead>
                           <tr className="bg-slate-50 text-left text-slate-500">
                             <th className="px-3 py-2 font-medium">Cours</th>

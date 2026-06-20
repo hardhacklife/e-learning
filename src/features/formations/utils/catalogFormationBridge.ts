@@ -9,6 +9,18 @@ import type { StudentFormation } from '@/types/formation'
 export const DEFAULT_FORMATION_IMAGE =
   'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=450&fit=crop'
 
+export function resolveFormationImageUrl(imageUrl?: string | null): string {
+  const trimmed = imageUrl?.trim()
+  if (!trimmed) return DEFAULT_FORMATION_IMAGE
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) {
+    const apiUrl = import.meta.env.VITE_API_URL ?? '/api'
+    const origin = apiUrl.replace(/\/api\/?$/, '')
+    return `${origin}${trimmed}`
+  }
+  return trimmed
+}
+
 export function formationIdFromCatalog(catalogId: number): string {
   return String(catalogId)
 }
@@ -43,7 +55,7 @@ export function buildStudentFormation(
     id: formationSlugFromCatalog(catalog),
     title: catalog.titre ?? catalog.nom,
     description: catalog.description ?? '',
-    imageUrl: catalog.imageUrl ?? DEFAULT_FORMATION_IMAGE,
+    imageUrl: resolveFormationImageUrl(catalog.imageUrl),
     level: formatNiveauEtude(catalog.niveau),
     type: catalog.typeFormation ?? '—',
     managerName: parcours?.managerName ?? '—',
@@ -65,7 +77,7 @@ export function mergeCatalogWithFormation(
     id: formationSlugFromCatalog(catalog),
     title: catalog.titre ?? catalog.nom,
     description: catalog.description ?? formation.description,
-    imageUrl: catalog.imageUrl ?? formation.imageUrl ?? DEFAULT_FORMATION_IMAGE,
+    imageUrl: resolveFormationImageUrl(catalog.imageUrl ?? formation.imageUrl),
     level: formatNiveauEtude(catalog.niveau),
     type: catalog.typeFormation ?? formation.type,
   }

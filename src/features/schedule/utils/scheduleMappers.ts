@@ -91,11 +91,22 @@ export function mapFormateurOption(formateur: {
   id: number
   prenom: string
   nom: string
+  formationIds?: number[]
 }) {
   return {
     id: formateur.id,
     label: `${formateur.prenom} ${formateur.nom}`.trim(),
+    formationIds: formateur.formationIds ?? [],
   }
+}
+
+export function resolveFormateurForFormation(
+  formationId: number | undefined,
+  formateurs: Array<{ id: number; formationIds?: number[] }>,
+): number | undefined {
+  if (!formationId) return formateurs[0]?.id
+  const assigned = formateurs.filter((f) => f.formationIds?.includes(formationId))
+  return assigned[0]?.id ?? formateurs[0]?.id
 }
 
 export const DAY_OPTIONS = [

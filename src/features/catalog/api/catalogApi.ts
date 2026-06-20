@@ -19,6 +19,7 @@ export interface FormationCatalog {
   dateFin?: string
   filiereId?: number
   filiereNom?: string
+  formateurNoms?: string[]
 }
 
 export interface PromotionCatalog {
@@ -53,6 +54,8 @@ export interface FormationCatalogInput {
   dateDebut?: string
   dateFin?: string
   filiereId?: number
+  duration?: string
+  sessionUrl?: string
 }
 
 export interface FormationParcours {
@@ -178,18 +181,18 @@ export const catalogApi = baseApi.injectEndpoints({
     }),
     createFormationCatalog: builder.mutation<FormationCatalog, FormationCatalogInput>({
       query: (body) => ({ url: '/formations', method: 'POST', body }),
-      invalidatesTags: ['Formation', 'Schedule'],
+      invalidatesTags: ['Formation', 'Formateur', 'Schedule'],
     }),
     updateFormationCatalog: builder.mutation<
       FormationCatalog,
       { id: number; body: FormationCatalogInput }
     >({
       query: ({ id, body }) => ({ url: `/formations/${id}`, method: 'PUT', body }),
-      invalidatesTags: ['Formation', 'Schedule'],
+      invalidatesTags: ['Formation', 'Formateur', 'Schedule'],
     }),
     deleteFormationCatalog: builder.mutation<void, number>({
       query: (id) => ({ url: `/formations/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['Formation', 'Schedule'],
+      invalidatesTags: ['Formation', 'Formateur', 'Schedule'],
     }),
 
     getPromotionsCatalog: builder.query<PromotionCatalog[], number | void>({
@@ -282,7 +285,7 @@ export const catalogApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: { formationIds },
       }),
-      invalidatesTags: ['Formateur', 'Schedule'],
+      invalidatesTags: ['Formateur', 'Formation', 'Schedule'],
     }),
 
     getFilieres: builder.query<FiliereCatalog[], void>({

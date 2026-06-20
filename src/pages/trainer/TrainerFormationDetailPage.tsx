@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Spinner } from '@/components/ui/Spinner'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -9,8 +10,12 @@ import { FormationFormModal } from '@/features/formations/components/FormationFo
 import { SubModuleFormModal } from '@/features/formations/components/SubModuleFormModal'
 import { FormationStudentsPanel } from '@/features/formations/components/FormationStudentsPanel'
 import { TrainerSubModulePanel } from '@/features/formations/components/TrainerSubModulePanel'
+import { useCatalogFormation } from '@/features/formations/hooks/useCatalogFormation'
+import { useStudentFormation } from '@/features/formations/hooks/useStudentFormation'
 import { createEmptySubModuleFields } from '@/features/formations/utils/normalizeFormation'
+import { resolveFormationImageUrl } from '@/features/formations/utils/catalogFormationBridge'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useGetMyModulesQuery } from '@/features/students/api/studentsApi'
 import {
   addDeposit,
   addSubModule,
@@ -43,13 +48,43 @@ export function TrainerFormationDetailPage() {
     ? formatTrainerName(user.firstName, user.lastName)
     : ''
 
-  const formation = useAppSelector((state) =>
+  const { data: myModules = [], isLoading: loadingModules } = useGetMyModulesQuery()
+
+  const localFormation = useAppSelector((state) =>
     id ? selectFormationById(state, id) : undefined,
   )
   const ownFormations = useAppSelector((state) =>
     selectFormationsByTrainer(state, trainerName),
   )
-  const isOwnFormation = formation && ownFormations.some((f) => f.id === formation.id)
+  const isCreated = !!(localFormation && ownFormations.some((f) => f.id === localFormation.id))
+
+  const matchedModule = myModules.find(
+    (module) => String(module.id) === id || module.slug === id,
+  )
+  const isAssigned = matchedModule != null && matchedModule.assignee !== false
+  const isCatalogAccessible = isAssigned || matchedModule?.cree === true
+  const catalogId = matchedModule?.id ?? (id && !Number.isNaN(Number(id)) ? Number(id) : undefined)
+  const useCatalog = isCatalogAccessible && catalogId != null && !isCreated
+
+  const {
+    formation: catalogFormation,
+    isLoading: loadingCatalog,
+    isError: catalogError,
+  } = useCatalogFormation(useCatalog ? catalogId : undefined, {
+    syncParcoursToApi: !!useCatalog,
+  })
+
+  const {
+    formation: slugFormation,
+    isLoading: loadingSlug,
+    isError: slugError,
+  } = useStudentFormation(
+    useCatalog || isCreated || !id || matchedModule ? undefined : id,
+  )
+
+  const formation = isCreated ? localFormation : catalogFormation ?? slugFormation
+  const canManageMetadata = isCreated
+  const isLoading = loadingModules || (useCatalog && loadingCatalog) || loadingSlug
 
   const [editModule, setEditModule] = useState(false)
   const [deleteModule, setDeleteModule] = useState(false)
@@ -60,10 +95,32 @@ export function TrainerFormationDetailPage() {
   const [depositToDelete, setDepositToDelete] =
     useState<FormationProjectDeposit | null>(null)
 
-  if (!formation || !isOwnFormation) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!formation || (!isCreated && !isCatalogAccessible)) {
     return (
       <div className="rounded-lg border border-slate-100 bg-white p-6 text-center shadow-sm">
-        <p className="text-sm text-slate-500">Formation introuvable.</p>
+        <p className="text-sm text-slate-500">Formation introuvable ou non accessible.</p>
+        <Link
+          to="/trainer/formations"
+          className="mt-3 inline-block text-xs font-medium text-primary-600 hover:text-primary-700"
+        >
+          Retour à mes formations
+        </Link>
+      </div>
+    )
+  }
+
+  if (catalogError || slugError) {
+    return (
+      <div className="rounded-lg border border-slate-100 bg-white p-6 text-center shadow-sm">
+        <p className="text-sm text-slate-500">Impossible de charger cette formation.</p>
         <Link
           to="/trainer/formations"
           className="mt-3 inline-block text-xs font-medium text-primary-600 hover:text-primary-700"
@@ -88,7 +145,7 @@ export function TrainerFormationDetailPage() {
 
       <div className="relative w-full overflow-hidden rounded-md">
         <img
-          src={formation.imageUrl}
+          src={resolveFormationImageUrl(formation.imageUrl)}
           alt={formation.title}
           className="aspect-[4/1] w-full object-cover"
         />
@@ -104,21 +161,31 @@ export function TrainerFormationDetailPage() {
             </h1>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white/30 bg-white/90 text-slate-800 hover:bg-white"
-              onClick={() => setEditModule(true)}
-            >
-              Modifier
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => setDeleteModule(true)}
-            >
-              Supprimer
-            </Button>
+            {canManageMetadata && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-white/30 bg-white/90 text-slate-800 hover:bg-white"
+                  onClick={() => setEditModule(true)}
+                >
+                  Modifier
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => setDeleteModule(true)}
+                >
+                  Supprimer
+                </Button>
+              </>
+            )}
+            {isAssigned && !canManageMetadata && (
+              <Badge className="border-white/30 bg-white/90 text-slate-700">Assigné</Badge>
+            )}
+            {matchedModule?.cree && !isAssigned && (
+              <Badge className="border-white/30 bg-white/90 text-slate-700">Créé</Badge>
+            )}
           </div>
         </div>
       </div>
@@ -143,12 +210,14 @@ export function TrainerFormationDetailPage() {
         </div>
       </div>
 
-      <div className="mt-5">
-        <FormationStudentsPanel
-          formationId={formation.id}
-          enrolledStudentIds={formation.enrolledStudentIds ?? []}
-        />
-      </div>
+      {canManageMetadata && (
+        <div className="mt-5">
+          <FormationStudentsPanel
+            formationId={formation.id}
+            enrolledStudentIds={formation.enrolledStudentIds ?? []}
+          />
+        </div>
+      )}
 
       <div className="mt-5">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -263,12 +332,12 @@ export function TrainerFormationDetailPage() {
       </div>
 
       <FormationFormModal
-        open={editModule}
+        open={editModule && canManageMetadata}
         onClose={() => setEditModule(false)}
         formation={formation}
-        onSubmit={(values) =>
+        onSubmit={async (values) => {
           dispatch(updateFormation({ id: formation.id, data: values }))
-        }
+        }}
       />
 
       <SubModuleFormModal
@@ -332,7 +401,7 @@ export function TrainerFormationDetailPage() {
       />
 
       <ConfirmDialog
-        open={deleteModule}
+        open={deleteModule && canManageMetadata}
         title="Supprimer le module"
         message={`Supprimer « ${formation.title} » et tout son contenu ?`}
         onConfirm={() => {

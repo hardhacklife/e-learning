@@ -6,11 +6,12 @@ import {
   SEANCE_DRAG_TYPE,
   SCHEDULE_CONFIG,
   type ScheduleGridConfig,
+  countOverlappingEvents,
   generateTimeSlots,
-  getEventPosition,
   getNowLinePosition,
   getWeekDays,
   isSameDay,
+  layoutDayEvents,
   slotIndexToTimeRange,
   yOffsetToSlotIndex,
 } from '@/features/schedule/utils/scheduleUtils'
@@ -78,6 +79,23 @@ export function WeeklySchedule({
     }
     return map
   }, [sourceEvents])
+
+  const layoutsByDay = useMemo(() => {
+    const map = new Map<number, ReturnType<typeof layoutDayEvents<ScheduleEvent>>>()
+    for (let day = 0; day < 7; day++) {
+      map.set(day, layoutDayEvents(eventsByDay.get(day) ?? [], gridConfig))
+    }
+    return map
+  }, [eventsByDay, gridConfig])
+
+  const overlapCount = useMemo(
+    () =>
+      Array.from(eventsByDay.values()).reduce(
+        (total, dayEvents) => total + countOverlappingEvents(dayEvents),
+        0,
+      ),
+    [eventsByDay],
+  )
 
   const gridHeight = timeSlots.length * slotHeight
 
@@ -172,6 +190,15 @@ export function WeeklySchedule({
         )}
       </div>
 
+      {overlapCount > 0 && (
+        <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="font-semibold">
+            {overlapCount} séance{overlapCount !== 1 ? 's' : ''} se chevauchent
+          </span>
+          {' '}— affichées côte à côte sur la grille (contour ambre).
+        </p>
+      )}
+
       {editable && (
         <p className="mb-3 rounded-lg border border-dashed border-primary-200 bg-primary-50/50 px-3 py-2 text-xs text-primary-800">
           {planHint ??
@@ -243,7 +270,7 @@ export function WeeklySchedule({
               {weekDays.map((date, dayIndex) => {
                 const isToday = isSameDay(date, today)
                 const isSunday = dayIndex === 6
-                const dayEvents = eventsByDay.get(dayIndex) ?? []
+                const dayEvents = layoutsByDay.get(dayIndex) ?? []
                 const isDropTarget = dragOverDay === dayIndex
 
                 return (
@@ -293,23 +320,35 @@ export function WeeklySchedule({
                       </div>
                     )}
 
-                    {dayEvents.map((event) => (
-                      <div key={event.id} data-schedule-event>
+                    {dayEvents.map((layout) => (
+                      <div key={layout.id} data-schedule-event>
                         <ScheduleEventCard
-                          event={event}
-                          style={getEventPosition(event.startTime, event.endTime, gridConfig)}
+                          event={layout}
+                          style={{
+                            top: layout.top,
+                            height: layout.height,
+                            leftPercent: layout.leftPercent,
+                            widthPercent: layout.widthPercent,
+                            columnIndex: layout.columnIndex,
+                          }}
+                          hasOverlap={layout.hasOverlap}
                           compact={compact}
                           interactive={editable}
                           draggable={editable && canPlan && !!onEventMove}
-                          isDragging={draggingEventId === event.id}
+                          isDragging={draggingEventId === layout.id}
                           onDragStart={setDraggingEventId}
                           onDragEnd={() => setDraggingEventId(null)}
-                          onClick={() => onEventClick?.(event.id)}
+                          onClick={() => onEventClick?.(layout.id)}
                         />
-                        {draggingEventId === event.id && (
+                        {draggingEventId === layout.id && (
                           <div
-                            className="pointer-events-none absolute inset-x-1 rounded-lg border-2 border-dashed border-primary-300 bg-primary-50/40"
-                            style={getEventPosition(event.startTime, event.endTime, gridConfig)}
+                            className="pointer-events-none absolute rounded-lg border-2 border-dashed border-primary-300 bg-primary-50/40"
+                            style={{
+                              top: layout.top,
+                              height: layout.height,
+                              left: `calc(${layout.leftPercent}% + 1px)`,
+                              width: `calc(${layout.widthPercent}% - 2px)`,
+                            }}
                           />
                         )}
                       </div>
@@ -336,6 +375,14 @@ export function WeeklySchedule({
             <span className="text-xs text-slate-500">{item.label}</span>
           </div>
         ))}
+        {editable && (
+          <div className="flex items-center gap-1.5">
+            <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-px text-[9px] font-medium text-amber-800">
+              ‖
+            </span>
+            <span className="text-xs text-slate-500">Créneaux superposés</span>
+          </div>
+        )}
         {editable && (
           <div className="flex items-center gap-1.5">
             <span className="rounded-full bg-emerald-50 px-1.5 py-px text-[9px] font-medium text-emerald-700">

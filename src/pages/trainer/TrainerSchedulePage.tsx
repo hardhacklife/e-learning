@@ -14,7 +14,7 @@ export function TrainerSchedulePage() {
   const events = useMemo(() => seances.map(mapSeanceToScheduleEvent), [seances])
 
   return (
-    <div>
+    <div className="min-w-0 w-full">
       <div className="mb-4">
         <h1 className="text-xl font-bold text-slate-900">Emploi du temps</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -33,7 +33,13 @@ export function TrainerSchedulePage() {
       )}
       {(useMock || !isLoading) && (
         <WeeklySchedule
+          compact
           events={useMock ? undefined : events}
+          statsLabel={
+            !useMock
+              ? `${seances.length} séance${seances.length !== 1 ? 's' : ''}`
+              : undefined
+          }
           emptyMessage="Aucune séance planifiée pour vous."
         />
       )}

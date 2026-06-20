@@ -2,7 +2,10 @@ export const MOCK_ADMIN_STATS = {
   users: 156,
   students: 1240,
   formations: 48,
-  documents: 892,
+  trainers: 32,
+  personnel: 89,
+  filieres: 12,
+  promotions: 24,
 }
 
 export const MOCK_STUDENT_STATS = {
@@ -29,6 +32,28 @@ export const MOCK_TRAINING_STATS = {
   schedules: 24,
   trainers: 32,
   students: 1240,
+  filieres: 12,
+  promotions: 24,
+  formationSummaries: [
+    {
+      id: 1,
+      titre: 'Développement Web Full Stack',
+      niveau: 'LICENCE',
+      typeFormation: 'Présentiel',
+      filiereNom: 'Informatique',
+      effectif: 50,
+      formateurNoms: ['Ibrahima Ndiaye'],
+    },
+    {
+      id: 2,
+      titre: 'Gestion de Projet Agile',
+      niveau: 'MASTER',
+      typeFormation: 'Hybride',
+      filiereNom: 'Management',
+      effectif: 33,
+      formateurNoms: ['Ousmane Fall', 'Aminata Sow'],
+    },
+  ],
 }
 
 export const MOCK_CAREER_STATS = {

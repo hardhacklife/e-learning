@@ -177,12 +177,12 @@ export function PersonnelCategoryPanel({ category }: PersonnelCategoryPanelProps
       <div className="mb-3 flex items-start justify-between gap-3">
         <p className="text-xs text-slate-500">
           {config.description} — {filtered.length} / {categoryItems.length}
-          {!useMock && (
+          {/* {!useMock && (
             <span className="mt-1 block text-slate-400">
               Données chargées depuis{' '}
               <code className="text-slate-600">{config.apiLabel}</code>
             </span>
-          )}
+          )} */}
         </p>
         {isAdmin && (
           <Button

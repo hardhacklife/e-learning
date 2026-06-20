@@ -3,26 +3,112 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import {
+  useCreateMemberMutation,
+  useDeleteMemberMutation,
+  useUpdateMemberMutation,
+} from '@/features/admin/api/adminApi'
+import { PersonnelCategoryFormModal } from '@/features/admin/components/PersonnelCategoryFormModal'
+import { getApiErrorMessage } from '@/features/admin/utils/apiError'
+import {
+  mapMembreToAdminPersonnel,
+  type BackendMembreResponse,
+} from '@/features/admin/utils/personnelMappers'
+import {
   useAssignFormateurFormationsMutation,
   useGetFormationsCatalogQuery,
   useGetFormateursQuery,
 } from '@/features/catalog/api/catalogApi'
 import { AssignFormationsModal } from '@/features/catalog/components/AssignFormationsModal'
-import type { BackendMembreResponse } from '@/features/admin/utils/personnelMappers'
+import { ConfirmDialog } from '@/features/formations/components/ConfirmDialog'
+import { CrudActions } from '@/features/formations/components/CrudActions'
+import type { AdminPersonnel } from '@/mocks/data/adminPersonnel'
+
+function toPersonnel(formateur: BackendMembreResponse): AdminPersonnel {
+  return mapMembreToAdminPersonnel(formateur)
+}
 
 export function TrainingTrainersPage() {
   const { data: formateurs = [], isLoading } = useGetFormateursQuery()
   const { data: formations = [] } = useGetFormationsCatalogQuery()
+  const [createMember, { isLoading: isCreating }] = useCreateMemberMutation()
+  const [updateMember, { isLoading: isUpdating }] = useUpdateMemberMutation()
+  const [deleteMember] = useDeleteMemberMutation()
   const [assignFormations, { isLoading: assigning }] =
     useAssignFormateurFormationsMutation()
 
-  const [editing, setEditing] = useState<BackendMembreResponse | undefined>()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingPersonnel, setEditingPersonnel] = useState<AdminPersonnel | undefined>()
+  const [assigningFormateur, setAssigningFormateur] = useState<
+    BackendMembreResponse | undefined
+  >()
+  const [deleting, setDeleting] = useState<BackendMembreResponse | undefined>()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const openCreate = () => {
+    setSubmitError(null)
+    setEditingPersonnel(undefined)
+    setModalOpen(true)
+  }
+
+  const openEdit = (formateur: BackendMembreResponse) => {
+    setSubmitError(null)
+    setEditingPersonnel(toPersonnel(formateur))
+    setModalOpen(true)
+  }
+
+  const handleSubmit = async (values: AdminPersonnel, password?: string) => {
+    setSubmitError(null)
+    try {
+      if (editingPersonnel) {
+        await updateMember({ values, password }).unwrap()
+      } else if (password) {
+        await createMember({ values, password }).unwrap()
+      }
+      setModalOpen(false)
+      setEditingPersonnel(undefined)
+    } catch (error) {
+      setSubmitError(
+        getApiErrorMessage(
+          error as Parameters<typeof getApiErrorMessage>[0],
+          editingPersonnel
+            ? 'Impossible de modifier l\'enseignant.'
+            : 'Impossible de créer l\'enseignant.',
+        ),
+      )
+      throw new Error('trainer-form-failed')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleting) return
+    setDeleteError(null)
+    try {
+      await deleteMember({
+        id: String(deleting.utilisateurId),
+        category: 'enseignant',
+      }).unwrap()
+      setDeleting(undefined)
+    } catch (error) {
+      setDeleteError(
+        getApiErrorMessage(
+          error as Parameters<typeof getApiErrorMessage>[0],
+          'Impossible de supprimer cet enseignant.',
+        ),
+      )
+    }
+  }
 
   return (
     <div>
       <PageHeader
-        title="Formateurs"
-        description="Enseignants et assignation aux modules"
+        title="Enseignants"
+        description="Gestion des formateurs et assignation aux modules"
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            + Enseignant
+          </Button>
+        }
       />
 
       {isLoading ? (
@@ -32,9 +118,9 @@ export function TrainingTrainersPage() {
       ) : formateurs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
           <p className="text-sm text-slate-600">Aucun enseignant enregistré.</p>
-          <p className="mt-2 text-xs text-slate-500">
-            Créez des comptes formateurs depuis l&apos;administration (catégorie Enseignant).
-          </p>
+          <Button size="sm" className="mt-4" onClick={openCreate}>
+            Ajouter un enseignant
+          </Button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -45,8 +131,8 @@ export function TrainingTrainersPage() {
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Grade</th>
                 <th className="px-4 py-3 font-medium">Spécialité</th>
-                <th className="px-4 py-3 font-medium">Formations assignées</th>
-                <th className="px-4 py-3 font-medium" />
+                <th className="px-4 py-3 font-medium">Modules assignés</th>
+                <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -71,13 +157,26 @@ export function TrainingTrainersPage() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400">Aucune</span>
+                      <span className="text-xs text-slate-400">Aucun</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="outline" onClick={() => setEditing(formateur)}>
-                      Assigner
-                    </Button>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAssigningFormateur(formateur)}
+                      >
+                        Assigner
+                      </Button>
+                      <CrudActions
+                        onEdit={() => openEdit(formateur)}
+                        onDelete={() => {
+                          setDeleteError(null)
+                          setDeleting(formateur)
+                        }}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -86,21 +185,50 @@ export function TrainingTrainersPage() {
         </div>
       )}
 
+      <PersonnelCategoryFormModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false)
+          setEditingPersonnel(undefined)
+          setSubmitError(null)
+        }}
+        category="enseignant"
+        personnel={editingPersonnel}
+        isSubmitting={isCreating || isUpdating}
+        submitError={submitError}
+        onSubmit={handleSubmit}
+      />
+
       <AssignFormationsModal
-        open={!!editing}
-        onClose={() => setEditing(undefined)}
-        formateur={editing}
+        open={!!assigningFormateur}
+        onClose={() => setAssigningFormateur(undefined)}
+        formateur={assigningFormateur}
         formations={formations}
         isSubmitting={assigning}
         onSubmit={async (formationIds) => {
-          if (editing) {
+          if (assigningFormateur) {
             await assignFormations({
-              formateurId: editing.id,
+              formateurId: assigningFormateur.id,
               formationIds,
             }).unwrap()
-            setEditing(undefined)
+            setAssigningFormateur(undefined)
           }
         }}
+      />
+
+      <ConfirmDialog
+        open={!!deleting}
+        onCancel={() => {
+          setDeleting(undefined)
+          setDeleteError(null)
+        }}
+        onConfirm={handleDelete}
+        title="Supprimer l'enseignant"
+        message={
+          deleteError ??
+          `Supprimer ${deleting?.prenom ?? ''} ${deleting?.nom ?? ''} ? Cette action est irréversible.`
+        }
+        confirmLabel="Supprimer"
       />
     </div>
   )

@@ -5,6 +5,7 @@ import type { SeanceInput } from '@/features/schedule/api/scheduleApi'
 import {
   DAY_OPTIONS,
   SEANCE_TYPE_OPTIONS,
+  resolveFormateurForFormation,
   type BackendPromotion,
   type FormationScheduleOption,
 } from '@/features/schedule/utils/scheduleMappers'
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils'
 interface FormateurOption {
   id: number
   label: string
+  formationIds?: number[]
 }
 
 export interface SeanceFormSubmit extends SeanceInput {
@@ -73,28 +75,85 @@ export function SeanceFormModal({
   const isEditing = !!initial?.id
   const showPromotionSelect = !isEditing && promotionChoices.length > 0
 
+  const initialKey = initial
+    ? [
+        initial.id ?? 'new',
+        initial.promotionId,
+        initial.formationId,
+        initial.formateurId,
+        initial.jourSemaine,
+        initial.heureDebut,
+        initial.heureFin,
+      ].join('|')
+    : 'new'
+
   useEffect(() => {
+    if (!open) return
+
     const choices = promotions.length > 0 ? promotions : promotion ? [promotion] : []
     const promotionId =
       initial?.promotionId ?? promotion?.id ?? choices[0]?.id ?? 0
 
     if (initial) {
+      const formationId = initial.formationId ?? formations[0]?.id ?? 0
+      const formateurId =
+        initial.formateurId ??
+        resolveFormateurForFormation(formationId, formateurs) ??
+        0
+
       setValues({
         ...emptyForm(promotionId),
         ...initial,
         promotionId,
+        formationId,
+        formateurId,
         recurrente: true,
         joursRepetition: [],
       })
     } else {
+      const formationId = formations[0]?.id ?? 0
       setValues({
         ...emptyForm(promotionId),
-        formationId: formations[0]?.id ?? 0,
-        formateurId: formateurs[0]?.id ?? 0,
+        formationId,
+        formateurId: resolveFormateurForFormation(formationId, formateurs) ?? 0,
       })
     }
     setError(null)
-  }, [initial, open, promotion, promotions, formations, formateurs])
+  }, [open, initialKey, promotion?.id, promotions.length])
+
+  useEffect(() => {
+    if (!open || isEditing) return
+
+    setValues((current) => {
+      const formationId = current.formationId || formations[0]?.id || 0
+      const assignedFormateurId = resolveFormateurForFormation(formationId, formateurs)
+      const keepCurrentFormateur =
+        current.formateurId &&
+        formateurs.some(
+          (f) =>
+            f.id === current.formateurId &&
+            (!f.formationIds?.length || f.formationIds.includes(formationId)),
+        )
+
+      return {
+        ...current,
+        formationId,
+        formateurId:
+          keepCurrentFormateur
+            ? current.formateurId
+            : assignedFormateurId || current.formateurId || 0,
+        promotionId: current.promotionId || promotion?.id || promotions[0]?.id || 0,
+      }
+    })
+  }, [open, isEditing, formations, formateurs, promotion?.id, promotions])
+
+  const visibleFormateurs = useMemo(() => {
+    if (!values.formationId) return formateurs
+    const assigned = formateurs.filter((f) =>
+      f.formationIds?.includes(values.formationId),
+    )
+    return assigned.length > 0 ? assigned : formateurs
+  }, [formateurs, values.formationId])
 
   const joursCibles = useMemo(() => {
     const days = new Set<number>([values.jourSemaine, ...values.joursRepetition])
@@ -137,14 +196,15 @@ export function SeanceFormModal({
       await onSubmit(values)
       onClose()
     } catch (err) {
-      setError(
-        getApiErrorMessage(
-          err as Parameters<typeof getApiErrorMessage>[0],
-          'Impossible d\'enregistrer la séance.',
-        ),
+      const message = getApiErrorMessage(
+        err as Parameters<typeof getApiErrorMessage>[0],
+        'Impossible d\'enregistrer la séance.',
       )
+      setError(message)
     }
   }
+
+  if (!open) return null
 
   return (
     <Modal
@@ -153,7 +213,12 @@ export function SeanceFormModal({
       title={isEditing ? 'Modifier la séance' : 'Ajouter une séance'}
     >
       {error && (
-        <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        <div
+          role="alert"
+          className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {error}
+        </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-3">
         {showPromotionSelect ? (
@@ -188,9 +253,15 @@ export function SeanceFormModal({
           <FieldLabel>Formation</FieldLabel>
           <SelectInput
             value={values.formationId || ''}
-            onChange={(e) =>
-              setValues((v) => ({ ...v, formationId: Number(e.target.value) }))
-            }
+            onChange={(e) => {
+              const formationId = Number(e.target.value)
+              setValues((v) => ({
+                ...v,
+                formationId,
+                formateurId:
+                  resolveFormateurForFormation(formationId, formateurs) ?? v.formateurId,
+              }))
+            }}
             required
           >
             <option value="" disabled>
@@ -219,12 +290,19 @@ export function SeanceFormModal({
                 ? 'Aucun enseignant — créez-en un via l\'admin'
                 : 'Choisir un enseignant'}
             </option>
-            {formateurs.map((f) => (
+            {visibleFormateurs.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.label}
               </option>
             ))}
           </SelectInput>
+          {values.formationId > 0 &&
+            visibleFormateurs.length < formateurs.length &&
+            visibleFormateurs.length > 0 && (
+              <p className="mt-1 text-xs text-slate-500">
+                Enseignants assignés à cette formation.
+              </p>
+            )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

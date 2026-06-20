@@ -28,11 +28,13 @@ import {
   DAY_OPTIONS,
   mapFormateurOption,
   mapSeanceToScheduleEvent,
+  resolveFormateurForFormation,
 } from '@/features/schedule/utils/scheduleMappers'
 import { FORMATION_DRAG_TYPE, moveTimeRange } from '@/features/schedule/utils/scheduleUtils'
 import type { BackendSeance } from '@/features/schedule/utils/scheduleMappers'
 import type { ScheduleEventMove, ScheduleSlotSelection } from '@/types/schedule'
 import { formatNiveauEtude, NIVEAU_ETUDE_OPTIONS } from '@/types/niveauEtude'
+import { getApiErrorMessage } from '@/features/admin/utils/apiError'
 import { cn } from '@/lib/utils'
 
 function formationLabel(
@@ -172,6 +174,7 @@ export function TrainingSchedulePage() {
   const [editingSeance, setEditingSeance] = useState<BackendSeance | undefined>()
   const [deletingSeance, setDeletingSeance] = useState<BackendSeance | undefined>()
   const [seanceDraft, setSeanceDraft] = useState<Partial<SeanceInput> | undefined>()
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
 
   const formateurOptions = useMemo(
     () => formateurs.map(mapFormateurOption),
@@ -217,11 +220,6 @@ export function TrainingSchedulePage() {
     typeSeance: seance.typeSeance,
   })
 
-  const syncContextFromSeance = (seance: BackendSeance) => {
-    if (seance.formationId) setFormationFilterId(seance.formationId)
-    setPromotionId(seance.promotionId)
-  }
-
   const modalPromotion = useMemo(() => {
     if (selectedPromotion) return selectedPromotion
     if (!editingSeance) return undefined
@@ -235,12 +233,47 @@ export function TrainingSchedulePage() {
 
   const openSeanceModal = (draft?: Partial<SeanceInput>) => {
     setEditingSeance(undefined)
-    setSeanceDraft(draft)
+    setSeanceDraft(draft ?? {})
+    setScheduleError(null)
     setSeanceModalOpen(true)
   }
 
   const defaultFormationId =
     draggableFormations[0]?.id ?? filteredFormations[0]?.id
+
+  const defaultFormateurId = formateurOptions[0]?.id
+  const defaultPromotionOptionId = promotionOptions[0]?.id
+
+  const seanceModalInitial = useMemo((): (SeanceInput & { id?: number }) | undefined => {
+    if (editingSeance) return seanceToInput(editingSeance)
+    if (!seanceDraft) return undefined
+
+    return {
+      ...seanceDraft,
+      promotionId: promotionId ?? seanceDraft.promotionId ?? defaultPromotionOptionId ?? 0,
+      jourSemaine: seanceDraft.jourSemaine ?? 0,
+      heureDebut: seanceDraft.heureDebut ?? '08:00',
+      heureFin: seanceDraft.heureFin ?? '10:00',
+      typeSeance: seanceDraft.typeSeance ?? 'COURS',
+      formationId: seanceDraft.formationId ?? defaultFormationId ?? 0,
+      formateurId:
+        seanceDraft.formateurId ??
+        resolveFormateurForFormation(
+          seanceDraft.formationId ?? defaultFormationId,
+          formateurOptions,
+        ) ??
+        defaultFormateurId ??
+        0,
+    }
+  }, [
+    editingSeance,
+    seanceDraft,
+    promotionId,
+    defaultPromotionOptionId,
+    defaultFormationId,
+    defaultFormateurId,
+    formateurOptions,
+  ])
 
   const handleSlotSelect = (slot: ScheduleSlotSelection) => {
     if (!canInteractWithSchedule) return
@@ -259,7 +292,10 @@ export function TrainingSchedulePage() {
       heureDebut: slot.startTime,
       heureFin: slot.endTime,
       formationId: slot.formationId ?? defaultFormationId,
-      formateurId: formateurOptions[0]?.id,
+      formateurId: resolveFormateurForFormation(
+        slot.formationId ?? defaultFormationId,
+        formateurOptions,
+      ),
       promotionId: targetPromotionId,
     })
   }
@@ -267,8 +303,8 @@ export function TrainingSchedulePage() {
   const handleEventClick = (eventId: string) => {
     const seance = allSeances.find((s) => String(s.id) === eventId)
     if (seance) {
-      syncContextFromSeance(seance)
       setSeanceDraft(undefined)
+      setScheduleError(null)
       setEditingSeance(seance)
       setSeanceModalOpen(true)
     }
@@ -294,12 +330,19 @@ export function TrainingSchedulePage() {
           heureFin: endTime,
         },
       }).unwrap()
-    } catch {
-      // conflit horaire — invalidation RTK restaure l'état
+      setScheduleError(null)
+    } catch (err) {
+      setScheduleError(
+        getApiErrorMessage(
+          err as Parameters<typeof getApiErrorMessage>[0],
+          'Impossible de déplacer la séance.',
+        ),
+      )
     }
   }
 
   const handleSaveSeance = async (values: SeanceFormSubmit) => {
+    setScheduleError(null)
     const targetPromotionId =
       values.promotionId ??
       selectedPromotion?.id ??
@@ -424,7 +467,7 @@ export function TrainingSchedulePage() {
               ))}
             </select>
           </div>
-          <div>
+          {/* <div>
             <label className="text-xs font-medium text-slate-600">Promotion (classe)</label>
             <div className="mt-1 flex gap-2">
               <select
@@ -449,7 +492,7 @@ export function TrainingSchedulePage() {
                 +
               </Button>
             </div>
-          </div>
+          </div> */}
         </div>
         {hasScopeFilters && (
           <p className="mt-3 text-xs text-slate-500">
@@ -474,6 +517,12 @@ export function TrainingSchedulePage() {
           </div>
         )}
       </div>
+
+      {scheduleError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {scheduleError}
+        </div>
+      )}
 
       <div className="mb-4">
         <WeeklySchedule
@@ -538,7 +587,8 @@ export function TrainingSchedulePage() {
                   </div>
                   <CrudActions
                     onEdit={() => {
-                      syncContextFromSeance(seance)
+                      setSeanceDraft(undefined)
+                      setScheduleError(null)
                       setEditingSeance(seance)
                       setSeanceModalOpen(true)
                     }}
@@ -641,39 +691,21 @@ export function TrainingSchedulePage() {
         isSubmitting={creatingPromotion}
       />
 
-      {seanceModalOpen && canInteractWithSchedule && (
-        <SeanceFormModal
-          open={seanceModalOpen}
-          onClose={() => {
-            setSeanceModalOpen(false)
-            setEditingSeance(undefined)
-            setSeanceDraft(undefined)
-          }}
-          promotion={editingSeance ? modalPromotion : selectedPromotion}
-          promotions={promotionOptions}
-          formations={formationScheduleOptions}
-          formateurs={formateurOptions}
-          initial={
-            editingSeance
-              ? seanceToInput(editingSeance)
-              : seanceDraft
-                ? {
-                    ...seanceDraft,
-                    promotionId: promotionId ?? seanceDraft.promotionId ?? 0,
-                    jourSemaine: seanceDraft.jourSemaine ?? 0,
-                    heureDebut: seanceDraft.heureDebut ?? '08:00',
-                    heureFin: seanceDraft.heureFin ?? '10:00',
-                    typeSeance: seanceDraft.typeSeance ?? 'COURS',
-                    formationId:
-                      seanceDraft.formationId ?? defaultFormationId ?? 0,
-                    formateurId: seanceDraft.formateurId ?? formateurOptions[0]?.id ?? 0,
-                  }
-                : undefined
-          }
-          onSubmit={handleSaveSeance}
-          isSubmitting={creatingSeance || updatingSeance}
-        />
-      )}
+      <SeanceFormModal
+        open={seanceModalOpen}
+        onClose={() => {
+          setSeanceModalOpen(false)
+          setEditingSeance(undefined)
+          setSeanceDraft(undefined)
+        }}
+        promotion={editingSeance ? modalPromotion : undefined}
+        promotions={promotionOptions}
+        formations={formationScheduleOptions}
+        formateurs={formateurOptions}
+        initial={seanceModalInitial}
+        onSubmit={handleSaveSeance}
+        isSubmitting={creatingSeance || updatingSeance}
+      />
 
       <ConfirmDialog
         open={!!deletingSeance}

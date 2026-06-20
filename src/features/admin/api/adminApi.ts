@@ -49,6 +49,7 @@ export const adminApi = baseApi.injectEndpoints({
         toAdminPersonnelFromAuthResponse(response, arg.values),
       invalidatesTags: (_result, _error, arg) => [
         { type: 'AdminPersonnel', id: arg.values.category },
+        ...(arg.values.category === 'enseignant' ? (['Formateur'] as const) : []),
       ],
     }),
     updateMember: builder.mutation<AdminPersonnel, UpdatePersonnelInput>({
@@ -61,6 +62,7 @@ export const adminApi = baseApi.injectEndpoints({
         mapMembreToAdminPersonnel(response),
       invalidatesTags: (_result, _error, arg) => [
         { type: 'AdminPersonnel', id: arg.values.category },
+        ...(arg.values.category === 'enseignant' ? (['Formateur'] as const) : []),
       ],
     }),
     deleteMember: builder.mutation<void, DeletePersonnelInput>({
@@ -70,6 +72,7 @@ export const adminApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, arg) => [
         { type: 'AdminPersonnel', id: arg.category },
+        ...(arg.category === 'enseignant' ? (['Formateur'] as const) : []),
       ],
     }),
   }),

@@ -4,13 +4,22 @@ import { ProfileDropdown } from '@/components/layout/ProfileDropdown'
 import { NavItemIcon } from '@/components/layout/NavItemIcon'
 import { APP_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { useGetUnreadNotificationCountQuery } from '@/features/notifications/api/notificationsApi'
 import type { NavItem } from '@/routes/config/navConfig'
 
 interface StudentNavbarProps {
   items: NavItem[]
 }
 
-function StudentNavItem({ item }: { item: NavItem }) {
+function StudentNavItem({
+  item,
+  unreadCount,
+}: {
+  item: NavItem
+  unreadCount: number
+}) {
+  const showBadge = item.path.endsWith('/notifications') && unreadCount > 0
+
   return (
     <NavLink
       to={item.path}
@@ -26,13 +35,22 @@ function StudentNavItem({ item }: { item: NavItem }) {
     >
       <NavItemIcon icon={item.icon} className="h-4 w-4 shrink-0" />
       <span>{item.label}</span>
+      {showBadge && (
+        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
     </NavLink>
   )
 }
 
 export function StudentNavbar({ items }: StudentNavbarProps) {
+  const { data: unread } = useGetUnreadNotificationCountQuery(undefined, {
+    pollingInterval: 60_000,
+  })
+
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm">
+    <header className="z-50 shrink-0 bg-white shadow-sm">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 border-b border-slate-100 px-4 sm:px-6">
         <div className="shrink-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary-600">
@@ -57,7 +75,7 @@ export function StudentNavbar({ items }: StudentNavbarProps) {
                   aria-hidden
                 />
               )}
-              <StudentNavItem item={item} />
+              <StudentNavItem item={item} unreadCount={unread?.count ?? 0} />
             </Fragment>
           ))}
         </div>

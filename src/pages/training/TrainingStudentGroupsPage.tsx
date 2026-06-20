@@ -101,7 +101,7 @@ export function TrainingStudentGroupsPage() {
 
   return (
     <div>
-      <PageHeader
+       <PageHeader
         title="Groupes et étudiants"
         description="Gestion des groupes, inscriptions et affectations par filière"
         actions={
@@ -129,7 +129,7 @@ export function TrainingStudentGroupsPage() {
           </div>
         }
       />
-
+{/*
       <div className="mb-6 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <FilterSelect
           label="Filière"
@@ -218,7 +218,7 @@ export function TrainingStudentGroupsPage() {
             </table>
           </div>
         )}
-      </section>
+      </section> */}
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-800">

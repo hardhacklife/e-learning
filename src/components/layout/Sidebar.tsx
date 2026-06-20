@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { NavItemIcon } from '@/components/layout/NavItemIcon'
 import { cn } from '@/lib/utils'
+import { useGetUnreadNotificationCountQuery } from '@/features/notifications/api/notificationsApi'
 import type { NavItem } from '@/routes/config/navConfig'
 
 interface SidebarProps {
@@ -10,8 +11,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({ title, subtitle, items }: SidebarProps) {
+  const { data: unread } = useGetUnreadNotificationCountQuery(undefined, {
+    pollingInterval: 60_000,
+    skip: !items.some((item) => item.path.endsWith('/notifications')),
+  })
+
   return (
-    <aside className="flex w-64 shrink-0 flex-col bg-sidebar text-white">
+    <aside className="flex h-screen w-64 shrink-0 flex-col overflow-y-auto bg-sidebar text-white">
       <div className="border-b border-white/10 px-5 py-6">
         <p className="text-xs font-semibold uppercase tracking-wider text-primary-300">
           UCHK
@@ -21,7 +27,11 @@ export function Sidebar({ title, subtitle, items }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
-        {items.map((item) => (
+        {items.map((item) => {
+          const showBadge =
+            item.path.endsWith('/notifications') && (unread?.count ?? 0) > 0
+
+          return (
           <NavLink
             key={item.path}
             to={item.path}
@@ -36,9 +46,15 @@ export function Sidebar({ title, subtitle, items }: SidebarProps) {
             }
           >
             <NavItemIcon icon={item.icon} />
-            <span>{item.label}</span>
+            <span className="flex-1">{item.label}</span>
+            {showBadge && (
+              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {(unread?.count ?? 0) > 99 ? '99+' : unread?.count}
+              </span>
+            )}
           </NavLink>
-        ))}
+          )
+        })}
       </nav>
     </aside>
   )

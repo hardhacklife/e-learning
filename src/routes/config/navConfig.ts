@@ -46,13 +46,14 @@ export const ADMIN_STAFF_NAV: NavItem[] = [
 ]
 
 export const TRAINER_NAV: NavItem[] = [
+  { label: 'Emploi du temps', path: '/trainer/emploi-du-temps', icon: Calendar },
   { label: 'Mes modules', path: '/trainer/formations', icon: BookOpen },
   { label: 'Étudiants', path: '/trainer/students', icon: GraduationCap },
   { label: 'Bulletins', path: '/trainer/bulletins', icon: ClipboardList },
-  { label: 'Emploi du temps', path: '/trainer/emploi-du-temps', icon: Calendar },
-  { label: 'Quiz', path: '/trainer/quiz', icon: HelpCircle },
-  { label: 'Dépôts de projet', path: '/trainer/depots', icon: FolderUp },
-  { label: 'Réunions', path: '/trainer/reunions', icon: Video },
+  { label: 'Notifications', path: '/trainer/notifications', icon: Bell },
+  // { label: 'Quiz', path: '/trainer/quiz', icon: HelpCircle },
+  // { label: 'Dépôts de projet', path: '/trainer/depots', icon: FolderUp },
+  // { label: 'Réunions', path: '/trainer/reunions', icon: Video },
 ]
 
 export const TUTOR_NAV: NavItem[] = [
@@ -68,6 +69,7 @@ export const TRAINING_NAV: NavItem[] = [
   { label: 'Promotions', path: '/training/promotions', icon: Users },
   { label: 'Groupes et étudiants', path: '/training/student-groups', icon: UserPlus },
   { label: 'Emplois du temps', path: '/training/schedule', icon: CalendarDays },
+  { label: 'Notifications', path: '/training/notifications', icon: Bell },
   { label: 'Formateurs', path: '/training/trainers', icon: UserCog },
 ]
 
@@ -79,11 +81,11 @@ export const CAREER_NAV: NavItem[] = [
 ]
 
 export const STUDENT_NAV: NavItem[] = [
-  { label: 'Mon dossier', path: '/student/dossier', icon: IdCard },
-  { label: 'Mes bulletins', path: '/student/bulletins', icon: ClipboardList },
+  // { label: 'Mon dossier', path: '/student/dossier', icon: IdCard },
   { label: 'Emploi du temps', path: '/student/emploi-du-temps', icon: Calendar },
   { label: 'Mes modules', path: '/student/formations', icon: BookOpen },
-  { label: 'Documents', path: '/student/documents', icon: FileText },
+  { label: 'Mes bulletins', path: '/student/bulletins', icon: ClipboardList },
+  // { label: 'Documents', path: '/student/documents', icon: FileText },
   { label: 'Notifications', path: '/student/notifications', icon: Bell },
 ]
 

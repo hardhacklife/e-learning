@@ -34,8 +34,9 @@ const emptyValues: FormationFormValues = {
 interface FormationFormModalProps {
   open: boolean
   onClose: () => void
-  onSubmit: (values: FormationFormValues) => void
+  onSubmit: (values: FormationFormValues) => void | Promise<void>
   formation?: StudentFormation
+  isSubmitting?: boolean
 }
 
 export function FormationFormModal({
@@ -43,6 +44,7 @@ export function FormationFormModal({
   onClose,
   onSubmit,
   formation,
+  isSubmitting = false,
 }: FormationFormModalProps) {
   const [values, setValues] = useState<FormationFormValues>(emptyValues)
 
@@ -62,10 +64,9 @@ export function FormationFormModal({
     }
   }, [formation, open])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(values)
-    onClose()
+    await onSubmit(values)
   }
 
   return (
@@ -145,10 +146,10 @@ export function FormationFormModal({
           />
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
             Annuler
           </Button>
-          <Button type="submit" size="sm">
+          <Button type="submit" size="sm" isLoading={isSubmitting}>
             {formation ? 'Enregistrer' : 'Créer'}
           </Button>
         </div>

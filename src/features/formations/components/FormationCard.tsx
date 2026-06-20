@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import type { StudentFormation } from '@/types/formation'
+import { resolveFormationImageUrl } from '@/features/formations/utils/catalogFormationBridge'
 
 interface FormationCardProps {
   formation: StudentFormation
@@ -18,7 +19,7 @@ export function FormationCard({
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
         <img
-          src={formation.imageUrl}
+          src={resolveFormationImageUrl(formation.imageUrl)}
           alt={formation.title}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"

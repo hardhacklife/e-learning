@@ -152,3 +152,154 @@ export function getNowLinePosition(config?: ScheduleGridConfig) {
 
   return { top, label }
 }
+
+export function eventsTimeOverlap(
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string,
+) {
+  return (
+    timeToMinutes(startA) < timeToMinutes(endB) &&
+    timeToMinutes(startB) < timeToMinutes(endA)
+  )
+}
+
+export interface ScheduleEventLayout {
+  top: number
+  height: number
+  leftPercent: number
+  widthPercent: number
+  columnIndex: number
+  columnCount: number
+  hasOverlap: boolean
+}
+
+type TimedEvent = {
+  id: string
+  startTime: string
+  endTime: string
+}
+
+function buildOverlapClusters<T extends TimedEvent>(events: T[]): T[][] {
+  const sorted = [...events].sort(
+    (a, b) =>
+      timeToMinutes(a.startTime) - timeToMinutes(b.startTime) ||
+      timeToMinutes(a.endTime) - timeToMinutes(b.endTime),
+  )
+
+  const clusters: T[][] = []
+
+  for (const event of sorted) {
+    const matchingIndexes = clusters
+      .map((cluster, index) =>
+        cluster.some((existing) =>
+          eventsTimeOverlap(
+            existing.startTime,
+            existing.endTime,
+            event.startTime,
+            event.endTime,
+          ),
+        )
+          ? index
+          : -1,
+      )
+      .filter((index) => index >= 0)
+
+    if (matchingIndexes.length === 0) {
+      clusters.push([event])
+      continue
+    }
+
+    const merged = matchingIndexes.flatMap((index) => clusters[index]!)
+    merged.push(event)
+
+    for (const index of [...matchingIndexes].sort((a, b) => b - a)) {
+      clusters.splice(index, 1)
+    }
+
+    clusters.push(merged)
+  }
+
+  return clusters
+}
+
+function assignClusterColumns<T extends TimedEvent>(
+  cluster: T[],
+): Map<string, { columnIndex: number; columnCount: number }> {
+  const sorted = [...cluster].sort(
+    (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime),
+  )
+
+  const columnEnds: number[] = []
+  const assignment = new Map<string, number>()
+
+  for (const event of sorted) {
+    const start = timeToMinutes(event.startTime)
+    const end = timeToMinutes(event.endTime)
+
+    let columnIndex = columnEnds.findIndex((columnEnd) => columnEnd <= start)
+    if (columnIndex === -1) {
+      columnIndex = columnEnds.length
+      columnEnds.push(end)
+    } else {
+      columnEnds[columnIndex] = end
+    }
+
+    assignment.set(event.id, columnIndex)
+  }
+
+  const columnCount = Math.max(columnEnds.length, 1)
+  const result = new Map<string, { columnIndex: number; columnCount: number }>()
+
+  for (const [eventId, columnIndex] of assignment.entries()) {
+    result.set(eventId, { columnIndex, columnCount })
+  }
+
+  return result
+}
+
+/** Positionne les événements d'un même jour en colonnes lorsqu'ils se chevauchent. */
+export function layoutDayEvents<T extends TimedEvent>(
+  events: T[],
+  config?: ScheduleGridConfig,
+): Array<T & ScheduleEventLayout> {
+  if (events.length === 0) return []
+
+  const clusters = buildOverlapClusters(events)
+  const layoutById = new Map<string, { columnIndex: number; columnCount: number }>()
+
+  for (const cluster of clusters) {
+    const columns = assignClusterColumns(cluster)
+    for (const [eventId, layout] of columns.entries()) {
+      layoutById.set(eventId, layout)
+    }
+  }
+
+  return events.map((event) => {
+    const { top, height } = getEventPosition(event.startTime, event.endTime, config)
+    const columnLayout = layoutById.get(event.id) ?? {
+      columnIndex: 0,
+      columnCount: 1,
+    }
+    const { columnIndex, columnCount } = columnLayout
+    const widthPercent = 100 / columnCount
+    const leftPercent = columnIndex * widthPercent
+
+    return {
+      ...event,
+      top,
+      height,
+      leftPercent,
+      widthPercent,
+      columnIndex,
+      columnCount,
+      hasOverlap: columnCount > 1,
+    }
+  })
+}
+
+export function countOverlappingEvents<T extends TimedEvent>(events: T[]): number {
+  const clusters = buildOverlapClusters(events)
+  return clusters.filter((cluster) => cluster.length > 1).reduce((sum, cluster) => sum + cluster.length, 0)
+}

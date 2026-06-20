@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import type { FiliereModuleSummary } from '@/features/catalog/api/catalogApi'
 import {
-  DEFAULT_FORMATION_IMAGE,
   moduleSlugFromSummary,
+  resolveFormationImageUrl,
 } from '@/features/formations/utils/catalogFormationBridge'
 import { formatNiveauEtude } from '@/types/niveauEtude'
 
@@ -16,7 +16,7 @@ export function ModuleCatalogCard({
   module,
   basePath = '/student/formations',
 }: ModuleCatalogCardProps) {
-  const imageUrl = module.imageUrl ?? DEFAULT_FORMATION_IMAGE
+  const imageUrl = resolveFormationImageUrl(module.imageUrl)
   const subModuleCount = module.subModuleCount ?? 0
 
   return (

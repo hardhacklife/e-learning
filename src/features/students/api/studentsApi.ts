@@ -43,8 +43,15 @@ export interface FormateurModuleOption {
   id: number
   titre: string
   slug?: string
+  description?: string
+  imageUrl?: string
+  niveau?: string
+  typeFormation?: string
+  subModuleCount?: number
   filiereId?: number
   filiereNom?: string
+  assignee?: boolean
+  cree?: boolean
 }
 
 export interface EtudiantFiliereView {

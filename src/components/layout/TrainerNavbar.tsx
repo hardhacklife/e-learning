@@ -32,7 +32,7 @@ function TrainerNavItem({ item }: { item: NavItem }) {
 
 export function TrainerNavbar({ items }: TrainerNavbarProps) {
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm">
+    <header className="z-50 shrink-0 bg-white shadow-sm">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 border-b border-slate-100 px-4 sm:px-6">
         <div className="shrink-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary-600">

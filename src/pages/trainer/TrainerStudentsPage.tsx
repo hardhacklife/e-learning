@@ -1,14 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { useGetFilieresQuery, useGetPromotionsCatalogQuery } from '@/features/catalog/api/catalogApi'
-import {
-  useCreateStudentMutation,
-  useGetMyModulesQuery,
-  useGetStudentsQuery,
-} from '@/features/students/api/studentsApi'
-import { StudentCreateModal } from '@/features/students/components/StudentCreateModal'
+import { useGetMyModulesQuery, useGetStudentsQuery } from '@/features/students/api/studentsApi'
 import { formatNiveauEtude } from '@/types/niveauEtude'
 
 export function TrainerStudentsPage() {
@@ -26,53 +19,13 @@ export function TrainerStudentsPage() {
     { skip: selectedModuleId == null },
   )
 
-  const { data: allPromotions = [] } = useGetPromotionsCatalogQuery()
-  const { data: allFilieres = [] } = useGetFilieresQuery()
-  const [createStudent, { isLoading: creating }] = useCreateStudentMutation()
-
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const myFiliereIds = useMemo(
-    () =>
-      new Set(
-        myModules
-          .map((module) => module.filiereId)
-          .filter((id): id is number => id != null),
-      ),
-    [myModules],
-  )
-
-  const availableFilieres = useMemo(
-    () => allFilieres.filter((filiere) => myFiliereIds.has(filiere.id)),
-    [allFilieres, myFiliereIds],
-  )
-
-  const availablePromotions = useMemo(
-    () =>
-      allPromotions.filter(
-        (promotion) =>
-          promotion.formationId != null &&
-          myModules.some((module) => module.id === promotion.formationId),
-      ),
-    [allPromotions, myModules],
-  )
-
   const selectedModule = myModules.find((module) => module.id === selectedModuleId)
 
   return (
     <div>
       <PageHeader
         title="Étudiants"
-        description="Liste des étudiants par module (filière)"
-        actions={
-          <Button
-            size="sm"
-            disabled={availableFilieres.length === 0}
-            onClick={() => setModalOpen(true)}
-          >
-            + Nouvel étudiant
-          </Button>
-        }
+        description="Consultation des étudiants par rapport à vos modules"
       />
 
       {myModules.length === 0 ? (
@@ -98,7 +51,8 @@ export function TrainerStudentsPage() {
           </div>
           {selectedModule?.filiereNom && (
             <p className="pb-2 text-sm text-slate-500">
-              Filière : <span className="font-medium text-slate-700">{selectedModule.filiereNom}</span>
+              Filière :{' '}
+              <span className="font-medium text-slate-700">{selectedModule.filiereNom}</span>
             </p>
           )}
         </div>
@@ -150,17 +104,6 @@ export function TrainerStudentsPage() {
           </table>
         </div>
       )}
-
-      <StudentCreateModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        filieres={availableFilieres}
-        promotions={availablePromotions}
-        isSubmitting={creating}
-        onSubmit={async (values) => {
-          await createStudent(values).unwrap()
-        }}
-      />
     </div>
   )
 }
